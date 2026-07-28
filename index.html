@@ -7,7 +7,6 @@
 <meta name="description" content="A little birthday surprise for Almera.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Fredoka:wght@500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -368,12 +367,99 @@
   }
 
   @media (prefers-reduced-motion: reduce){
-    .flag, .petals span, .scroll-cue, .open-hint{ animation: none !important; }
+    .flag, .petals span, .scroll-cue, .open-hint, .lock-icon{ animation: none !important; }
     .envelope .flap, .envelope .seal, .envelope .card-note{ transition-duration: .01s !important; transition-delay: 0s !important; }
+  }
+
+  /* ================= LOCK / COUNTDOWN ================= */
+  body.locked{ overflow: hidden; height: 100vh; }
+
+  .lock-overlay{
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display:flex;
+    flex-direction: column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding: 2rem;
+    background: linear-gradient(155deg, var(--blush) 0%, var(--marigold-soft) 55%, var(--marigold) 100%);
+    transition: opacity .9s ease;
+  }
+  .lock-overlay.hidden{
+    opacity: 0;
+    pointer-events: none;
+  }
+  .lock-icon{
+    font-size: 3.2rem;
+    margin-bottom: 1rem;
+    animation: bob 2.4s ease-in-out infinite;
+  }
+  .lock-title{
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 4vw, 2.3rem);
+    color: var(--berry);
+    margin-bottom: .5rem;
+    max-width: 480px;
+  }
+  .lock-sub{
+    font-family: var(--font-script);
+    font-size: 1.3rem;
+    color: var(--berry);
+    opacity: .85;
+    margin-bottom: 2.3rem;
+  }
+  .countdown{
+    display:flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content:center;
+  }
+  .countdown-box{
+    background: var(--white);
+    border-radius: 12px;
+    padding: 1rem 1.3rem;
+    min-width: 76px;
+    box-shadow: 0 10px 24px var(--shadow);
+  }
+  .countdown-num{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    color: var(--blossom);
+    line-height: 1;
+  }
+  .countdown-label{
+    font-family: var(--font-body);
+    font-size: .72rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--berry);
+    opacity: .7;
+    margin-top: .35rem;
   }
 </style>
 </head>
-<body>
+<body class="locked">
+
+  <!-- ================= COUNTDOWN LOCK =================
+       This overlay covers the whole page until August 3rd,
+       then fades away on its own. See the script at the
+       bottom to change the unlock date/time if needed. -->
+  <div class="lock-overlay" id="lockOverlay">
+    <div class="lock-icon" aria-hidden="true">🎁</div>
+    <h2 class="lock-title">Something's waiting for you, Almera</h2>
+    <p class="lock-sub">it unlocks on August 3rd 💛</p>
+    <div class="countdown" aria-live="polite">
+      <div class="countdown-box"><div class="countdown-num" id="cdDays">00</div><div class="countdown-label">days</div></div>
+      <div class="countdown-box"><div class="countdown-num" id="cdHours">00</div><div class="countdown-label">hours</div></div>
+      <div class="countdown-box"><div class="countdown-num" id="cdMinutes">00</div><div class="countdown-label">minutes</div></div>
+      <div class="countdown-box"><div class="countdown-num" id="cdSeconds">00</div><div class="countdown-label">seconds</div></div>
+    </div>
+  </div>
+
+  <div class="site-content" id="siteContent">
 
   <!-- ================= HERO ================= -->
   <header class="hero" id="hero">
@@ -400,10 +486,9 @@
   <main>
     <!-- ================= GALLERY =================
          ✏️ TO ADD YOUR OWN PHOTOS:
-         Replace the "src" of each <img> below with your own picture,
-         e.g. src="images/photo1.jpg" (keep an "images" folder next to
-         this file, or use any image URL). Feel free to change the
-         <figcaption> text under each photo too. -->
+         Replace the "src" of each <img> below with your own picture
+         (keep an "images" folder next to this file). Feel free to
+         change the <figcaption> text under each photo too. -->
     <section class="gallery-section" id="gallery">
       <h2 class="section-title">Our Little Gallery</h2>
       <p class="section-sub">moments worth keeping</p>
@@ -456,7 +541,7 @@
     <!-- ================= SWEET MESSAGE =================
          ✏️ TO EDIT THE MESSAGE:
          Just change the text inside the <p class="note-body"> tag
-         below, and replace [Your Name] with your own. -->
+         below. -->
     <section class="message-section" id="message">
       <h2 class="section-title">A Little Something For You</h2>
       <p class="section-sub">tap the seal to open it</p>
@@ -481,6 +566,55 @@
   <footer class="site-footer">
     <p>Made with 💛 for Almera · celebrating August 3rd</p>
   </footer>
+
+  </div><!-- /.site-content -->
+
+  <script>
+    // ✏️ TARGET UNLOCK DATE — change the numbers below if you need to.
+    // Format: new Date(year, monthIndex, day, hour, minute)
+    // monthIndex is 0-based, so August = 7.
+    // This uses the visitor's own device clock/timezone.
+    const UNLOCK_DATE = new Date(2026, 7, 3, 0, 0, 0);
+  //const UNLOCK_DATE = new Date(Date.now() + 1 * 60 * 1000);
+    (function initCountdown(){
+      const lockOverlay = document.getElementById('lockOverlay');
+      if (!lockOverlay) return;
+
+      function pad(n){ return String(n).padStart(2, '0'); }
+
+      function unlockSite(){
+        clearInterval(timer);
+        document.body.classList.remove('locked');
+        lockOverlay.classList.add('hidden');
+        setTimeout(() => lockOverlay.remove(), 1000);
+      }
+
+      function tick(){
+        const diff = UNLOCK_DATE - new Date();
+        if (diff <= 0){
+          unlockSite();
+          return;
+        }
+        const days = Math.floor(diff / 86400000);
+        const hours = Math.floor(diff / 3600000) % 24;
+        const minutes = Math.floor(diff / 60000) % 60;
+        const seconds = Math.floor(diff / 1000) % 60;
+
+        document.getElementById('cdDays').textContent = days;
+        document.getElementById('cdHours').textContent = pad(hours);
+        document.getElementById('cdMinutes').textContent = pad(minutes);
+        document.getElementById('cdSeconds').textContent = pad(seconds);
+      }
+
+      if (UNLOCK_DATE - new Date() <= 0){
+        document.body.classList.remove('locked');
+        lockOverlay.remove();
+      } else {
+        tick();
+        var timer = setInterval(tick, 1000);
+      }
+    })();
+  </script>
 
   <script>
     const envelope = document.getElementById('envelope');
