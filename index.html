@@ -371,6 +371,72 @@
     .envelope .flap, .envelope .seal, .envelope .card-note{ transition-duration: .01s !important; transition-delay: 0s !important; }
   }
 
+  /* ================= DATE PICKER ================= */
+  .date-section{
+    padding: 6rem 1.5rem 7rem;
+    text-align:center;
+    background: var(--white);
+  }
+  .date-form{
+    max-width: 420px;
+    margin: 2rem auto 0;
+    display:flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    text-align: left;
+  }
+  .date-form label{
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: .95rem;
+    color: var(--berry);
+    margin-bottom: .35rem;
+    display:block;
+  }
+  .date-form input[type="date"],
+  .date-form textarea{
+    width:100%;
+    padding: .75rem 1rem;
+    border: 2px solid var(--blush);
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    color: var(--berry);
+    background: var(--cream);
+    transition: border-color .2s ease;
+  }
+  .date-form textarea{ resize: vertical; }
+  .date-form input[type="date"]:focus,
+  .date-form textarea:focus{
+    outline:none;
+    border-color: var(--blossom);
+  }
+  .date-submit{
+    align-self:center;
+    margin-top: .4rem;
+    padding: .9rem 2.1rem;
+    background: var(--blossom);
+    color: var(--white);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.05rem;
+    border-radius: 50px;
+    box-shadow: 0 10px 22px var(--shadow);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .date-submit:hover{
+    transform: translateY(-3px);
+    box-shadow: 0 14px 28px var(--shadow);
+  }
+  .form-status{
+    font-family: var(--font-script);
+    font-size: 1.15rem;
+    color: var(--berry);
+    min-height: 1.6rem;
+    margin-top: .2rem;
+    text-align:center;
+  }
+
   /* ================= LOCK / COUNTDOWN ================= */
   body.locked{ overflow: hidden; height: 100vh; }
 
@@ -561,6 +627,28 @@
         </button>
       </div>
     </section>
+
+    <!-- ================= DATE PICKER =================
+         Uses a plain mailto link — when she submits, it opens
+         her own email app with the message pre-filled, addressed
+         to your email below. No signup or backend needed. -->
+    <section class="date-section" id="date-picker">
+      <h2 class="section-title">Pick a Date With Me?</h2>
+      <p class="section-sub">no pressure, just hopeful 😊</p>
+
+      <form id="dateForm" class="date-form">
+        <div>
+          <label for="dateInput">When works for you?</label>
+          <input type="date" id="dateInput" name="date" required>
+        </div>
+        <div>
+          <label for="noteInput">Want to add a note? (optional)</label>
+          <textarea id="noteInput" name="note" rows="3" placeholder="Anything you'd like to add..."></textarea>
+        </div>
+        <button type="submit" class="date-submit">Send it my way 💌</button>
+        <p class="form-status" id="formStatus" aria-live="polite"></p>
+      </form>
+    </section>
   </main>
 
   <footer class="site-footer">
@@ -570,12 +658,16 @@
   </div><!-- /.site-content -->
 
   <script>
-    // ✏️ TARGET UNLOCK DATE — change the numbers below if you need to.
+    // 🧪 TEST MODE — unlocks 2 minutes after the page is opened.
+    // When you're done testing, delete this line and uncomment
+    // the real one below it.
+    const UNLOCK_DATE = new Date(2026, 7, 3, 0, 0, 0);
+
+    // ✏️ REAL UNLOCK DATE — this is the one you want live on Aug 3.
     // Format: new Date(year, monthIndex, day, hour, minute)
     // monthIndex is 0-based, so August = 7.
-    // This uses the visitor's own device clock/timezone.
-    const UNLOCK_DATE = new Date(2026, 7, 3, 0, 0, 0);
-  //const UNLOCK_DATE = new Date(Date.now() + 1 * 60 * 1000);
+    // const UNLOCK_DATE = new Date(2026, 7, 3, 0, 0, 0);
+
     (function initCountdown(){
       const lockOverlay = document.getElementById('lockOverlay');
       if (!lockOverlay) return;
@@ -614,6 +706,41 @@
         var timer = setInterval(tick, 1000);
       }
     })();
+  </script>
+
+  <script>
+    // ✏️ This is the email the date-picker message gets sent to.
+    const RECIPIENT_EMAIL = 'aragones.markj25425@gmail.com';
+
+    const dateForm = document.getElementById('dateForm');
+    const formStatus = document.getElementById('formStatus');
+
+    dateForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const dateVal = document.getElementById('dateInput').value;
+      const noteVal = document.getElementById('noteInput').value.trim();
+
+      if (!dateVal){
+        formStatus.textContent = 'Please pick a date first 🙂';
+        return;
+      }
+
+      const formattedDate = new Date(dateVal + 'T00:00:00').toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+
+      const subject = "I picked a date! 💛";
+      let body = `Hey! I'd love to see you on ${formattedDate}.`;
+      if (noteVal){
+        body += `\n\nAlso, I wanted to add: ${noteVal}`;
+      }
+
+      const mailtoLink = `mailto:${RECIPIENT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailtoLink;
+
+      formStatus.textContent = 'Opening your email app... 💌';
+    });
   </script>
 
   <script>
